@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+
+# Byte-compiled / distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+pip-wheel-metadata/
+
+# VSCode
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+
+# Frontend-specific
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+frontend/node_modules/.cache/
+frontend/public/_next/
+public/_next/
+
+# Environment files (do not commit secrets)
+*.env
+backend/.env
+frontend/.env.local
+
+# Temporary and caches
+tmp_uploads/
+
+# Misc
+.DS_Store
+*.log
+node_modules
+frontend/node_modules
+frontend/.next
+frontend/out
+.DS_Store
+.env
+venv
+__pycache__
+*.pyc
+# Ignore Next build artifacts inside frontend
+frontend/.next
+frontend/out
+frontend/public/sw.js
+frontend/public/workbox-4754cb34.js
