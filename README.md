@@ -2,6 +2,7 @@
 
 **Pan-India Multimodal Agricultural PWA** — A high-availability, error-resilient agentic web ecosystem for Indian farmers.
 
+
 ## 🎯 Overview
 
 KisanBuddy employs a **Planner-Executor-Validator** architecture with specialist agents to provide:
