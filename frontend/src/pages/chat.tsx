@@ -167,7 +167,7 @@ export default function ChatPage() {
             placeholder={t('askPlaceholder')} 
             className="flex-1 text-sm sm:text-base py-3"
           />
-          <Button onClick={startListen} variant={listening ? 'secondary' : 'outline'} className={listening ? 'animate-pulse bg-red-100 text-red-700' : ''}>
+          <Button onClick={startListen} variant={listening ? 'danger' : 'ghost'} className={listening ? 'animate-pulse bg-red-100 text-red-700' : ''}>
             {listening ? `🎙️ ${t('listening')}` : '🎙️'}
           </Button>
           <Button onClick={handleSend} variant="primary">

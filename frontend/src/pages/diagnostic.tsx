@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import ReactMarkdown from 'react-markdown';
 import { getApiUrl } from '@/lib/api';
 import { useI18n } from '@/lib/i18n';
+import LanguageSelector from '@/components/LanguageSelector';
 
 function DiagnosticChat({ initialMessage }: { initialMessage?: string }) {
   const { t, lang } = useI18n();
@@ -239,15 +240,16 @@ export default function DiagnosticPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => window.open('/', '_self')}>
+                🏠 {t('home')}
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => window.open('/weather', '_self')}>
-                Weather
+                🌤️ {t('weather')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => window.open('/market', '_self')}>
-                Market
+                💰 {t('marketPrices')}
               </Button>
-              <Button size="sm" onClick={() => window.location.reload()}>
-                🔄 Refresh
-              </Button>
+              <LanguageSelector />
             </div>
           </div>
         </div>

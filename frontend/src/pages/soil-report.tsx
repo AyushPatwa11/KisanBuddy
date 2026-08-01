@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useI18n } from '@/lib/i18n';
+import LanguageSelector from '@/components/LanguageSelector';
 import { useRouter } from 'next/router';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -269,9 +270,12 @@ export default function SoilReportPage() {
                 <p className="text-xs text-neutral-500">{t('aiPoweredCropRecommendations')}</p>
               </div>
             </div>
-            <Button variant="ghost" onClick={() => router.push('/')} className="text-sm">
-              ← {t('home')}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" onClick={() => router.push('/')} className="text-sm">
+                🏠 {t('home')}
+              </Button>
+              <LanguageSelector />
+            </div>
           </div>
         </div>
       </header>

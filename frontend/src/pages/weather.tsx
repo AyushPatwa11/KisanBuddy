@@ -44,7 +44,11 @@ function ForecastCard({ item, onSelect, selected }: { item: Forecast; onSelect: 
   );
 }
 
+import { useI18n } from '@/lib/i18n';
+import LanguageSelector from '@/components/LanguageSelector';
+
 export default function WeatherPage() {
+  const { t } = useI18n();
   const sample7: Forecast[] = [
     { day: 'Today', icon: '🌧️', hi: 30, lo: 22, rain: 70, advisory: 'High winds + water logging predicted — secure support.' },
     { day: 'Tue', icon: '⛅', hi: 31, lo: 23, rain: 20, advisory: 'Light showers — safe to spray in dry windows.' },
@@ -311,19 +315,23 @@ export default function WeatherPage() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2">
-              🌤️ Weather & Impact Forecast
+              🌤️ {t('weather')}
             </h1>
             <p className="text-sm sm:text-base text-neutral-600 max-w-2xl">
-              Impact-Based Weather (IBF) tailored to your location — tactical guidance for the next 7 days
+              {t('weatherAlertsSub')}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => window.open('/', '_self')}>
+              🏠 {t('home')}
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => window.open('/diagnostic', '_self')}>
-              Diagnostics
+              🔬 {t('cropDiagnostics')}
             </Button>
-            <Button size="sm" onClick={() => window.location.reload()}>
-              🔄 Refresh
+            <Button variant="ghost" size="sm" onClick={() => window.open('/market', '_self')}>
+              💰 {t('market')}
             </Button>
+            <LanguageSelector />
           </div>
         </div>
 

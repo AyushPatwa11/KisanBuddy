@@ -3,8 +3,11 @@ import { useRouter } from 'next/router';
 import { getApiUrl } from '@/lib/api';
 import { Card, Button } from '@/components/ui';
 import { Modal } from '@/components/Modal';
+import { useI18n } from '@/lib/i18n';
+import LanguageSelector from '@/components/LanguageSelector';
 
 export default function MarketPage() {
+  const { t } = useI18n();
   const [searchCommodity, setSearchCommodity] = useState('');
   const [searchRegion, setSearchRegion] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
@@ -51,7 +54,24 @@ export default function MarketPage() {
         setSearchCommodity(fromQuery.trim());
       }
     }
-  }, [router.query]);
+  }, [router.query, searchCommodity]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const apiBase = getApiUrl();
+    fetch(`${apiBase}/healthz`)
+      .then(res => {
+        if (!mounted) return;
+        if (res.ok) setBackendStatus({ ok: true });
+        else setBackendStatus({ ok: false, status: res.status, message: `Server error HTTP ${res.status}` });
+      })
+      .catch(err => {
+        if (!mounted) return;
+        setBackendStatus({ ok: false, message: 'Cannot connect to backend server. Make sure server is running on port 8080 or 8000.' });
+      });
+
+    return () => { mounted = false; };
+  }, []);
 
   // On mount, attempt geolocation and fetch nearest mandi
   React.useEffect(() => {
@@ -238,19 +258,23 @@ export default function MarketPage() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-2">
-                🏪 Market Prices & Insights
+                🏪 {t('marketPrices')}
               </h1>
               <p className="text-sm sm:text-base text-neutral-600 max-w-2xl">
-                Live mandi prices with distance-adjusted effective pricing and market forecasts
+                {t('marketPricesSub')}
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => window.open('/', '_self')}>
+                🏠 {t('home')}
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => window.open('/diagnostic', '_self')}>
-                Scan Crop
+                🔬 {t('cropDiagnostics')}
               </Button>
-              <Button size="sm" onClick={() => window.location.reload()}>
-                🔄 Refresh
+              <Button variant="ghost" size="sm" onClick={() => window.open('/weather', '_self')}>
+                🌤️ {t('weather')}
               </Button>
+              <LanguageSelector />
             </div>
           </div>
         </div>
@@ -277,39 +301,39 @@ export default function MarketPage() {
             {/* Search Card */}
             <Card variant="elevated" className="bg-white/90 backdrop-blur-sm">
               <div className="p-6">
-                <h2 className="text-lg font-semibold text-neutral-900 mb-4">🔍 Search Markets</h2>
+                <h2 className="text-lg font-semibold text-neutral-900 mb-4">🔍 {t('searchMarkets')}</h2>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-neutral-600 mb-1 block">Quick Select</label>
+                    <label className="text-xs text-neutral-600 mb-1 block">{t('quickSelect')}</label>
                     <select
                       value={searchCommodity}
                       onChange={(e)=>setSearchCommodity(e.target.value)}
                       className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     >
-                      <option value="">Select commodity…</option>
-                      <option value="Wheat">Wheat</option>
-                      <option value="Rice">Rice</option>
-                      <option value="Tomato">Tomato</option>
-                      <option value="Potato">Potato</option>
-                      <option value="Maize">Maize</option>
-                      <option value="Cotton">Cotton</option>
-                      <option value="Chillies">Chillies</option>
-                      <option value="Eggplant">Eggplant</option>
-                      <option value="Okra">Okra</option>
+                      <option value="">{t('selectCommodity')}</option>
+                      <option value="Wheat">Wheat (गेहूँ/ଗହମ)</option>
+                      <option value="Rice">Rice (चावल/ଚାଉଳ)</option>
+                      <option value="Tomato">Tomato (टमाटर/ଟମାଟୋ)</option>
+                      <option value="Potato">Potato (आलू/ଆଳୁ)</option>
+                      <option value="Maize">Maize (मक्का/ମକା)</option>
+                      <option value="Cotton">Cotton (कपास/କପା)</option>
+                      <option value="Chillies">Chillies (मिर्च/ଲଙ୍କା)</option>
+                      <option value="Eggplant">Eggplant (बैंगन/ବାଇଗଣ)</option>
+                      <option value="Okra">Okra (भिंडी/ଭେଣ୍ଡି)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-neutral-600 mb-1 block">Commodity</label>
+                    <label className="text-xs text-neutral-600 mb-1 block">{t('commodity')}</label>
                     <input 
                       value={searchCommodity} 
                       onChange={(e)=>setSearchCommodity(e.target.value)} 
-                      placeholder="e.g., Wheat,Tomato" 
+                      placeholder="e.g., Wheat, Tomato" 
                       className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                   
                   <div>
-                    <label className="text-xs text-neutral-600 mb-1 block">Region (Optional)</label>
+                    <label className="text-xs text-neutral-600 mb-1 block">{t('regionOptional')}</label>
                     <input 
                       value={searchRegion} 
                       onChange={(e)=>setSearchRegion(e.target.value)} 
@@ -325,7 +349,7 @@ export default function MarketPage() {
                       onChange={(e)=>setLimitToLocation(e.target.checked)} 
                       className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
-                    <span className="text-neutral-700">Limit to my location</span>
+                    <span className="text-neutral-700">{t('limitToLocation')}</span>
                   </label>
 
                   <div className="flex gap-2 pt-2">
@@ -368,7 +392,7 @@ export default function MarketPage() {
                         } finally { setSearchLoading(false); }
                       }}
                     >
-                      {searchLoading ? 'Searching…' : '🔎 Search'}
+                      {searchLoading ? 'Searching…' : `🔎 ${t('search')}`}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -379,7 +403,7 @@ export default function MarketPage() {
                         setSearchError(null); 
                       }}
                     >
-                      Reset
+                      {t('clear')}
                     </Button>
                   </div>
 
@@ -840,12 +864,3 @@ export default function MarketPage() {
     </div>
   );
 }
-
-// Geolocation helper to load nearest mandi on page load
-;(function initAutoNearby() {
-  try {
-    // run in browser only
-    if (typeof window === 'undefined') return;
-    // nothing: MarketPage will call getNearby when mounted
-  } catch (e) {}
-})();
