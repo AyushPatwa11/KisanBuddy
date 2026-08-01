@@ -767,26 +767,24 @@ def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: 
     if today not in cache:
         cache[today] = {}
 
-    # For each mandi found, query prices by market name (normalized) and pick latest record
-    # Apply quality filters and cap number of upstream price queries to avoid noisy/irrelevant names
     def _is_valid_market_name(n: str) -> bool:
         if not n or not isinstance(n, str):
             return False
         s = n.strip().lower()
+        # accept if explicitly contains mandi/market-like words first
+        accept_tokens = ['mandi', 'market', 'mandai', 'bazaar', 'haat', 'sabzi', 'wholesale', 'apmc', 'pandal', 'complex']
+        for t in accept_tokens:
+            if t in s:
+                return True
         # blacklist generic, too-short or obviously non-mandi names
         blacklist_tokens = [
             'shop', 'store', 'grocery', 'supermarket', 'mother dairy', 'safal', 'pure veg',
             'restaurant', 'hotel', 'factory', 'office', 'company', 'software', 'solutions',
-            'mall', 'marketplace', 'vegetable shop', 'fruit stalls', 'fruits', 'd mart', 'dmart'
+            'mall', 'vegetable shop', 'fruit stalls', 'd mart', 'dmart'
         ]
         for t in blacklist_tokens:
             if t in s:
                 return False
-        # accept if explicitly contains mandi/market-like words
-        accept_tokens = ['mandi', 'market', 'mandai', 'bazaar', 'haat', 'sabzi', 'wholesale', 'mandi.']
-        for t in accept_tokens:
-            if t in s:
-                return True
         # otherwise accept reasonably long names (allow single-word names >=5 chars)
         if len(s) >= 5:
             return True
