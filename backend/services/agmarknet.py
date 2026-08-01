@@ -188,7 +188,7 @@ async def _post_prices_datagov_async(payload: Dict[str, Any]) -> List[Dict[str, 
         raise ValueError("DATAGOV_RESOURCE_ID and DATAGOV_API_KEY must be set to use data.gov.in integration")
 
     # Use a shorter timeout to fail faster when data.gov is slow/unreachable
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=3.0) as client:
         try:
             params: Dict[str, Any] = {"api-key": DATAGOV_API_KEY, "format": "json", "limit": 200}
             # Map possible filters
@@ -472,7 +472,7 @@ def search_places_geoapify(origin: Tuple[float, float], radius_km: int = 50, lim
             params["q"] = query_hint
 
         try:
-            with httpx.Client(timeout=20.0) as client:
+            with httpx.Client(timeout=3.0) as client:
                 resp = client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json()
@@ -537,19 +537,36 @@ def search_places_geoapify(origin: Tuple[float, float], radius_km: int = 50, lim
 # Removed: search_soil_testing_centres_geoapify - feature deprecated per project decision
 
 
+KNOWN_INDIAN_MANDIS = [
+    {"name": "Sundargarh APMC Mandi", "state": "Odisha", "lat": 22.12, "lon": 84.03},
+    {"name": "Rourkela Sub-Divisional Mandi", "state": "Odisha", "lat": 22.26, "lon": 84.85},
+    {"name": "Sambalpur Main Mandi", "state": "Odisha", "lat": 21.47, "lon": 83.97},
+    {"name": "Jharsuguda Market Yard", "state": "Odisha", "lat": 21.86, "lon": 84.01},
+    {"name": "Bargarh Grain Mandi", "state": "Odisha", "lat": 21.33, "lon": 83.62},
+    {"name": "Cuttack Malgodown Mandi", "state": "Odisha", "lat": 20.46, "lon": 85.88},
+    {"name": "Bhubaneswar Unit-1 Market", "state": "Odisha", "lat": 20.27, "lon": 85.84},
+    {"name": "Balasore Regulated Market", "state": "Odisha", "lat": 21.49, "lon": 86.93},
+    {"name": "Berhampur APMC Market", "state": "Odisha", "lat": 19.31, "lon": 84.79},
+    {"name": "Khanna Grain Market", "state": "Punjab", "lat": 30.70, "lon": 76.22},
+    {"name": "Karnal APMC Mandi", "state": "Haryana", "lat": 29.69, "lon": 76.98},
+    {"name": "Ambala Mandi", "state": "Haryana", "lat": 30.37, "lon": 76.78},
+    {"name": "Ludhiana Mandi", "state": "Punjab", "lat": 30.90, "lon": 75.85},
+    {"name": "Nashik APMC Mandi", "state": "Maharashtra", "lat": 19.99, "lon": 73.79},
+    {"name": "Azadpur Mandi", "state": "Delhi", "lat": 28.70, "lon": 77.17},
+    {"name": "Vashi APMC Mandi", "state": "Maharashtra", "lat": 19.07, "lon": 73.00},
+    {"name": "Indore APMC Mandi", "state": "Madhya Pradesh", "lat": 22.72, "lon": 75.86},
+    {"name": "Ujjain Mandi", "state": "Madhya Pradesh", "lat": 23.17, "lon": 75.78},
+    {"name": "Agra APMC Mandi", "state": "Uttar Pradesh", "lat": 27.18, "lon": 78.01},
+    {"name": "Kanpur Mandi", "state": "Uttar Pradesh", "lat": 26.44, "lon": 80.33},
+    {"name": "Jaipur APMC Mandi", "state": "Rajasthan", "lat": 26.91, "lon": 75.78},
+    {"name": "Kolar APMC Market", "state": "Karnataka", "lat": 13.13, "lon": 78.13},
+    {"name": "Yeshwanthpur APMC", "state": "Karnataka", "lat": 13.02, "lon": 77.55},
+    {"name": "Koyambedu Wholesale Market", "state": "Tamil Nadu", "lat": 13.07, "lon": 80.19},
+]
+
 def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: int = 100, top_n: int = 5,
                         fuel_rate_per_ton_km: float = 0.05, mandi_fees: float = 0.0) -> List[Dict[str, Any]]:
-    """Fetch recent prices for `commodity`, geocode markets, compute distance and effective price.
-
-    - `fuel_rate_per_ton_km` is a simple transport cost expressed as currency units per ton per km.
-    - `mandi_fees` is a flat per-ton fee applied at destination market.
-    Returns list of entries with keys: city, modal_price, distance_km, effective_price, raw_entry
-    """
-    # New robust approach:
-    # 1. Use Geoapify Places API to find actual mandi locations within radius
-    # 2. For each found mandi, query official price dataset (data.gov.in) by market name
-    # 3. Cache daily price lookups to avoid excessive upstream calls
-
+    """Fetch recent prices for `commodity`, geocode markets, compute distance and effective price."""
     GEOAPIFY_KEY = os.getenv("GEOAPIFY_API_KEY", "")
     CACHE_PATH = Path(__file__).parent.parent / "tmp_mandi_price_cache.json"
 
@@ -570,107 +587,24 @@ def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: 
     def _normalize_market_name(name: str) -> str:
         return " ".join(str(name or "").strip().lower().split())
 
-    # Use Geoapify to search for nearby mandis/markets
-    def _search_mandis_geoapify(origin, radius_km, limit=50):
-        lat, lon = origin
-        out = []
-        if not GEOAPIFY_KEY:
-            # Geoapify key missing — return empty so caller can fallback to previous logic
-            logger.debug("[find_nearest_mandis] GEOAPIFY_API_KEY not set; cannot perform place search")
-            return out
-        try:
-            url = "https://api.geoapify.com/v2/places"
-            # Use supported categories to reliably find marketplaces/mandis
-            categories = ",".join([
-                "commercial.marketplace",
-                "commercial.food_and_drink.fruit_and_vegetable",
-                "commercial.agrarian",
-                "commercial.marketplace.grocery",
-            ])
-            # Attempt with a few retries and progressively relaxed parameters if API complains
-            attempts = 3
-            data = None
-            last_err = None
-            radius_m = int(min(float(radius_km) * 1000.0, 50000))
-            for attempt in range(attempts):
-                params = {
-                    "apiKey": GEOAPIFY_KEY,
-                    "filter": f"circle:{lon},{lat},{radius_m}",
-                    "limit": limit,
-                    "bias": f"proximity:{lon},{lat}",
-                    "lang": "en",
-                }
-                # on first attempt send categories and a text hint
-                if attempt == 0:
-                    params["categories"] = categories
-                    params["q"] = "mandi"
-                # on second attempt drop the text hint
-                elif attempt == 1:
-                    params["categories"] = categories
-                # on third attempt send only the basic filter (no categories)
-                try:
-                    with httpx.Client(timeout=20.0) as client:
-                        resp = client.get(url, params=params)
-                        resp.raise_for_status()
-                        data = resp.json()
-                        break
-                except httpx.HTTPStatusError as he:
-                    last_err = he
-                    status = None
-                    body_text = None
-                    try:
-                        status = he.response.status_code
-                        body_text = he.response.text
-                    except Exception:
-                        status = None
-                    if status == 400:
-                        logger.debug(f"[find_nearest_mandis::_search_mandis_geoapify] Geoapify 400 body: {body_text}")
-                        time.sleep(0.5 * (attempt + 1))
-                        continue
-                    else:
-                        break
-                except Exception as e:
-                    last_err = e
-                    time.sleep(0.5 * (attempt + 1))
-                    continue
-            if data is None:
-                if last_err:
-                    logger.debug("[find_nearest_mandis] Geoapify search ultimately failed: %s", last_err)
-                else:
-                    logger.debug("[find_nearest_mandis] Geoapify search returned no data")
-            features = data.get("features") or [] if data else []
-            for f in features:
-                props = f.get("properties", {})
-                name = props.get("name") or props.get("address_line1") or props.get("street") or props.get("name:en") or ""
-                # geometry coordinates: [lon, lat]
-                geom = f.get("geometry", {})
-                coords = None
-                if geom and geom.get("coordinates"):
-                    try:
-                        lon_f, lat_f = geom.get("coordinates")[:2]
-                        coords = (float(lat_f), float(lon_f))
-                    except Exception:
-                        coords = None
-                distance = None
-                if coords:
-                    distance = round(_haversine_km(origin, coords), 2)
-                out.append({"name": name, "lat": coords[0] if coords else None, "lon": coords[1] if coords else None, "distance_km": distance})
-        except Exception as e:
-            logger.debug("[find_nearest_mandis] Geoapify search failed: %s", e)
-        # Deduplicate by normalized name and sort by distance
-        seen = set()
-        deduped = []
-        for m in out:
-            n = _normalize_market_name(m.get("name") or "")
-            if not n or n in seen:
-                continue
-            seen.add(n)
-            deduped.append(m)
-        deduped = [d for d in deduped if d.get("distance_km") is not None and d.get("distance_km") <= float(radius_km)]
-        deduped = sorted(deduped, key=lambda x: x.get("distance_km", 999999))
-        return deduped
+    mandis = []
+    # 1. Fetch Geoapify places if API key is present
+    geo_mandis = search_places_geoapify(origin, radius_km, limit=50)
+    if geo_mandis:
+        mandis.extend(geo_mandis)
 
-    mandis = _search_mandis_geoapify(origin, radius_km, limit=50)
+    # 2. Always include known regional mandis within radius
+    for km in KNOWN_INDIAN_MANDIS:
+        dist = _haversine_km(origin, (km["lat"], km["lon"]))
+        if dist <= float(radius_km) * 1.5:  # allow 1.5x search radius for regional mandis
+            mandis.append({
+                "name": km["name"],
+                "state": km["state"],
+                "lat": km["lat"],
+                "lon": km["lon"],
+                "distance_km": round(dist, 2),
+                "source": "known"
+            })
     # If Geoapify returned no results or failed, fall back to Overpass (OpenStreetMap) queries
     if not mandis:
         try:
@@ -931,31 +865,6 @@ def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: 
                             best = r
                     except Exception:
                         pass
-            # If still no match for this market, try state-wide commodity prices and pick nearest by geocoding
-            if not best:
-                try:
-                    origin_state = reverse_geocode_state(origin)
-                except Exception:
-                    origin_state = None
-                if origin_state:
-                    try:
-                        rows_state = fetch_prices(commodity=commodity, state=origin_state)
-                    except Exception:
-                        rows_state = []
-                    if rows_state:
-                        nearest = None
-                        nearest_dist = None
-                        for r in rows_state[:50]:
-                            city = r.get('city') or r.get('market') or ''
-                            coords = geocode_market_osm(city, state=origin_state)
-                            if not coords:
-                                continue
-                            d = _haversine_km(origin, coords)
-                            if nearest is None or d < (nearest_dist or 1e9):
-                                nearest = r
-                                nearest_dist = d
-                        if nearest:
-                            best = nearest
             return (market_entry, best or (rows[0] if rows else None), rows)
         except Exception as e:
             logger.debug("[find_nearest_mandis] price fetch failed for %s: %s", name, e)
@@ -966,7 +875,10 @@ def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: 
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(to_query))) as ex:
             futures = [ex.submit(_fetch_for_market, m) for m in to_query]
             for fut in concurrent.futures.as_completed(futures):
-                m, price_entry, rows = fut.result()
+                try:
+                    m, price_entry, rows = fut.result(timeout=2.0)
+                except Exception:
+                    continue
                 name = m.get("name") or ""
                 norm = _normalize_market_name(name)
                 if not price_entry:
