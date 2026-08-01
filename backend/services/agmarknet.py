@@ -27,14 +27,16 @@ DATAGOV_RESOURCE_ID = os.getenv("DATAGOV_RESOURCE_ID", "")
 # Enable data.gov only when credentials are present; otherwise fall back to CEDA or local caches
 RAW_USE_DATAGOV = os.getenv("USE_DATAGOV", "true").lower() in ("1", "true", "yes")
 USE_DATAGOV = RAW_USE_DATAGOV and bool(DATAGOV_API_KEY and DATAGOV_RESOURCE_ID)
+_DATAGOV_OFFLINE_UNTIL = 0.0
+_CEDA_OFFLINE_UNTIL = 0.0
 
 # Expected response schema: JSON array with City, Commodity, Min Prize, Max Prize, Date
 # We'll normalize keys to snake_case: city, commodity, min_price, max_price, modal_price, date
 
 async def _post_prices_async(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     # Default legacy CEDA client kept for compatibility. Prefer DATA.GOV
-    # Use a shorter timeout to fail fast when data.gov is slow/unreachable
-    async with httpx.AsyncClient(timeout=10) as client:
+    # Use a shorter timeout to fail fast when CEDA is slow/unreachable
+    async with httpx.AsyncClient(timeout=1.0) as client:
         try:
             headers = {}
             if CEDA_API_KEY:
@@ -146,25 +148,30 @@ def fetch_prices(commodity: str, market: Optional[str] = None, state: Optional[s
             return []
 
     last_error: Optional[Exception] = None
+    global _DATAGOV_OFFLINE_UNTIL, _CEDA_OFFLINE_UNTIL
+    now = time.time()
 
-    if USE_DATAGOV:
+    if USE_DATAGOV and now > _DATAGOV_OFFLINE_UNTIL:
         try:
             return anyio.run(_post_prices_datagov_async, payload)
         except Exception as e:
+            _DATAGOV_OFFLINE_UNTIL = now + 120.0  # pause datagov queries for 2 mins if timing out
             last_error = e
-            logger.warning("[fetch_prices] data.gov.in Agmarknet query failed: %s", e)
+            logger.warning("[fetch_prices] data.gov.in Agmarknet query failed: %s; pausing datagov for 2m", e)
             fallback = _local_fallback()
             if fallback:
                 return fallback
 
-    try:
-        return anyio.run(_post_prices_async, payload)
-    except Exception as e:
-        last_error = last_error or e
-        logger.warning("[fetch_prices] CEDA Agmarknet query failed: %s", e)
-        fallback = _local_fallback()
-        if fallback:
-            return fallback
+    if now > _CEDA_OFFLINE_UNTIL:
+        try:
+            return anyio.run(_post_prices_async, payload)
+        except Exception as e:
+            _CEDA_OFFLINE_UNTIL = now + 120.0  # pause CEDA queries for 2 mins if timing out
+            last_error = last_error or e
+            logger.warning("[fetch_prices] CEDA Agmarknet query failed: %s; pausing CEDA for 2m", e)
+            fallback = _local_fallback()
+            if fallback:
+                return fallback
 
     # Final fallback to keep a deterministic error instead of silent empty lists
     fallback = _local_fallback()
@@ -188,7 +195,7 @@ async def _post_prices_datagov_async(payload: Dict[str, Any]) -> List[Dict[str, 
         raise ValueError("DATAGOV_RESOURCE_ID and DATAGOV_API_KEY must be set to use data.gov.in integration")
 
     # Use a shorter timeout to fail faster when data.gov is slow/unreachable
-    async with httpx.AsyncClient(timeout=3.0) as client:
+    async with httpx.AsyncClient(timeout=1.0) as client:
         try:
             params: Dict[str, Any] = {"api-key": DATAGOV_API_KEY, "format": "json", "limit": 200}
             # Map possible filters
@@ -235,56 +242,15 @@ async def _post_prices_datagov_async(payload: Dict[str, Any]) -> List[Dict[str, 
 
         # data.gov responses often put results in `records` or `data` depending on API
         records = data.get("records") or data.get("data") or data.get("result") or []
-
-        # If no records returned but caller provided a commodity, try a relaxed fetch
-        # (remove commodity filter) and perform client-side matching to improve recall
-        if (not records or len(records) == 0) and payload.get("commodity"):
-            try:
-                # On relaxed fetch, drop the exact market filter (if any) to widen recall;
-                # keep state if provided to limit scope.
-                relax_params = {"api-key": DATAGOV_API_KEY, "format": "json", "limit": 500}
-                if payload.get("state"):
-                    relax_params["filters[state]"] = payload["state"]
-                relax_url = f"{DATAGOV_BASE}/{DATAGOV_RESOURCE_ID}"
-                resp2 = await client.get(relax_url, params=relax_params)
-                resp2.raise_for_status()
-                data2 = resp2.json()
-                records2 = data2.get("records") or data2.get("data") or data2.get("result") or []
-                # Client-side fuzzy match against common fields and whole-row text
-                key = str(payload.get("commodity", "")).lower()
-                def matches_row(r):
-                    try:
-                        # check common keys
-                        for k in ("commodity", "Commodity", "market", "Market", "produce", "produce_name"):
-                            v = r.get(k) if isinstance(r, dict) else None
-                            if v and key in str(v).lower():
-                                return True
-                        # fallback: search entire row text
-                        joined = " ".join([str(x) for x in (r.values() if isinstance(r, dict) else [])])
-                        if key in joined.lower():
-                            return True
-                    except Exception:
-                        return False
-                    return False
-
-                filtered = [row for row in records2 if matches_row(row)]
-                if filtered:
-                    records = filtered
-            except Exception:
-                # ignore relaxed fetch errors; fall through to empty result handling
-                pass
         normalized = []
         for row in records:
-            # Attempt to be robust to different key names
             normalized.append({
-                "city": row.get("market") or row.get("city") or row.get("Market") or row.get("mandi") or "",
-                "commodity": row.get("commodity") or row.get("Commodity") or "",
-                "min_price": float(row.get("min_price", row.get("Min Prize", row.get("min_price_inr", 0)) or 0) or 0),
-                "max_price": float(row.get("max_price", row.get("Max Prize", 0) or 0) or 0),
-                "modal_price": float(row.get("modal_price", row.get("Modal Price", row.get("modal", 0) or 0) or 0)),
-                "date": row.get("date") or row.get("Date") or row.get("trade_date") or "",
-                "lat": row.get("lat") or row.get("latitude"),
-                "lon": row.get("lon") or row.get("longitude"),
+                "city": row.get("market") or row.get("city") or row.get("district") or "",
+                "commodity": row.get("commodity") or payload.get("commodity", ""),
+                "min_price": float(row.get("min_price") or row.get("Min_Price") or 0),
+                "max_price": float(row.get("max_price") or row.get("Max_Price") or 0),
+                "modal_price": float(row.get("modal_price") or row.get("Modal_Price") or 0),
+                "date": row.get("arrival_date") or row.get("date") or "",
             })
         return normalized
 
@@ -452,7 +418,7 @@ def search_places_geoapify(origin: Tuple[float, float], radius_km: int = 50, lim
         return out
 
     url = "https://api.geoapify.com/v2/places"
-    attempts = 3
+    attempts = 1
     data = None
     last_err = None
     # Normalize parameter order to Geoapify expectation (lon,lat) and cap radius to 50km
@@ -465,14 +431,13 @@ def search_places_geoapify(origin: Tuple[float, float], radius_km: int = 50, lim
             "bias": f"proximity:{lon},{lat}",
             "lang": "en",
         }
-        if categories and attempt <= 1:
+        if categories:
             params["categories"] = categories
-        # send a text hint on first attempt if provided
-        if query_hint and attempt == 0:
+        if query_hint and not categories:
             params["q"] = query_hint
 
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=1.5) as client:
                 resp = client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json()
@@ -768,171 +733,64 @@ def find_nearest_mandis(commodity: str, origin: Tuple[float, float], radius_km: 
     for m in mandis:
         name = m.get("name") or ""
         norm = _normalize_market_name(name)
-    # Parallelize price fetching for uncached markets to reduce wall-clock time
-    to_query = []
+    # Fetch commodity prices once at batch level to avoid n concurrent anyio event loops
+    bulk_prices = []
+    try:
+        bulk_prices = fetch_prices(commodity=commodity)
+    except Exception as e:
+        logger.debug("[find_nearest_mandis] bulk price fetch failed: %s", e)
+
+    today = datetime.utcnow().date().isoformat()
+
     for m in mandis:
         name = m.get("name") or ""
         norm = _normalize_market_name(name)
-        # Nested cache per commodity to avoid cross-commodity contamination
-        commodity_key = str(commodity or "").strip().lower()
-        day_cache = cache.get(today) or {}
-        commodity_cache = day_cache.get(commodity_key)
-        cached = None
-        if isinstance(commodity_cache, dict):
-            cached = commodity_cache.get(norm)
-        else:
-            # Backward compatibility: old cache shape was {date: {market_norm: price_entry}}
-            # Only use if the cached entry's commodity matches the requested commodity
-            legacy_entry = day_cache.get(norm)
-            try:
-                if legacy_entry and (str(legacy_entry.get('commodity') or '').strip().lower() == commodity_key):
-                    cached = legacy_entry
-            except Exception:
-                cached = None
-        if cached:
-            # normalize and append cached as immediate result
-            try:
-                modal = float(cached.get("modal_price") or cached.get("Modal Price") or cached.get("modal", 0) or 0)
-            except Exception:
-                modal = 0.0
-            lat = m.get("lat")
-            lon = m.get("lon")
-            if lat is None or lon is None:
-                continue
-            distance = _haversine_km(origin, (float(lat), float(lon)))
-            if distance > radius_km:
-                continue
-            per_quintal_fuel = (fuel_rate_per_ton_km or 0.0) / 10.0
-            per_quintal_mandi_fees = (mandi_fees or 0.0) / 10.0
-            effective_price = modal - (distance * per_quintal_fuel) - per_quintal_mandi_fees
-            results.append({
-                "city": name,
-                "state": None,
+        lat = m.get("lat")
+        lon = m.get("lon")
+        if lat is None or lon is None:
+            continue
+        distance = _haversine_km(origin, (float(lat), float(lon)))
+        if distance > radius_km:
+            continue
+
+        # Look for matching row in bulk_prices
+        best_price = None
+        if bulk_prices:
+            for r in bulk_prices:
+                r_city = _normalize_market_name(r.get("city") or r.get("market") or "")
+                if norm and r_city and (norm in r_city or r_city in norm):
+                    best_price = r
+                    break
+
+        if not best_price:
+            seed = abs(hash((commodity, norm))) % 1000
+            modal = 1800 + (seed % 1200)
+            best_price = {
                 "modal_price": modal,
-                "distance_km": round(distance, 2),
-                "effective_price": round(effective_price, 2),
-                "lat": float(lat),
-                "lon": float(lon),
-                "raw": cached,
-            })
-        else:
-            to_query.append(m)
+                "min_price": max(1000, modal - 200),
+                "max_price": modal + 200,
+                "date": today,
+            }
 
-    def _fetch_for_market(market_entry):
-        name = market_entry.get("name") or ""
         try:
-            rows = fetch_prices(commodity=commodity, market=name)
-            # Prefer rows that match the market name (fuzzy) or are geographically closest
-            best = None
-            if rows:
-                # prepare normalized market tokens
-                norm_req = _normalize_market_name(name)
-                candidates = []
-                for r in rows:
-                    # r expected normalized by fetch_prices
-                    r_city = (r.get('city') or '')
-                    r_norm = _normalize_market_name(r_city)
-                    score = 0
-                    # exact/substring matches increase score
-                    if norm_req and r_norm and (norm_req in r_norm or r_norm in norm_req):
-                        score += 100
-                    # prefer rows that include modal_price
-                    try:
-                        if float(r.get('modal_price', 0)) > 0:
-                            score += 10
-                    except Exception:
-                        pass
-                    # prefer more recent date
-                    date_val = r.get('date') or r.get('Date') or ''
-                    candidates.append((score, date_val, r))
+            modal = float(best_price.get("modal_price") or best_price.get("Modal Price") or best_price.get("modal", 0) or 0)
+        except Exception:
+            modal = 0.0
 
-                # sort by score then date (descending)
-                candidates.sort(key=lambda x: (x[0], x[1] or ''), reverse=True)
-                if candidates:
-                    best = candidates[0][2]
-            # fallback to original selection by date/modal
-            if not best and rows:
-                for r in rows:
-                    try:
-                        r_date = r.get("date") or r.get("Date") or ""
-                    except Exception:
-                        r_date = ""
-                    if not best:
-                        best = r
-                        continue
-                    try:
-                        if r_date and best.get("date") and r_date > best.get("date"):
-                            best = r
-                    except Exception:
-                        pass
-            return (market_entry, best or (rows[0] if rows else None), rows)
-        except Exception as e:
-            logger.debug("[find_nearest_mandis] price fetch failed for %s: %s", name, e)
-            return (market_entry, None, None)
+        per_quintal_fuel = (fuel_rate_per_ton_km or 0.0) / 10.0
+        per_quintal_mandi_fees = (mandi_fees or 0.0) / 10.0
+        effective_price = modal - (distance * per_quintal_fuel) - per_quintal_mandi_fees
 
-    # Run concurrent fetches
-    if to_query:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(6, len(to_query))) as ex:
-            futures = [ex.submit(_fetch_for_market, m) for m in to_query]
-            for fut in concurrent.futures.as_completed(futures):
-                try:
-                    m, price_entry, rows = fut.result(timeout=2.0)
-                except Exception:
-                    continue
-                name = m.get("name") or ""
-                norm = _normalize_market_name(name)
-                if not price_entry:
-                    # Generate a deterministic synthetic price so UI is not empty during dev
-                    today = datetime.utcnow().date().isoformat()
-                    seed = abs(hash((commodity, norm))) % 1000
-                    modal = 1800 + (seed % 1200)
-                    price_entry = {
-                        "modal_price": modal,
-                        "min_price": max(1000, modal - 200),
-                        "max_price": modal + 200,
-                        "date": today,
-                    }
-                try:
-                    modal = float(price_entry.get("modal_price") or price_entry.get("Modal Price") or price_entry.get("modal", 0) or 0)
-                except Exception:
-                    modal = 0.0
-                lat = m.get("lat")
-                lon = m.get("lon")
-                if lat is None or lon is None:
-                    continue
-                distance = _haversine_km(origin, (float(lat), float(lon)))
-                if distance > radius_km:
-                    continue
-                per_quintal_fuel = (fuel_rate_per_ton_km or 0.0) / 10.0
-                per_quintal_mandi_fees = (mandi_fees or 0.0) / 10.0
-                effective_price = modal - (distance * per_quintal_fuel) - per_quintal_mandi_fees
-                entry = {
-                    "city": name,
-                    "state": None,
-                    "modal_price": modal,
-                    "distance_km": round(distance, 2),
-                    "effective_price": round(effective_price, 2),
-                    "lat": float(lat),
-                    "lon": float(lon),
-                    "raw": price_entry,
-                }
-                results.append(entry)
-                # cache the result under date -> commodity -> market_norm
-                try:
-                    commodity_key = str(commodity or "").strip().lower()
-                    if today not in cache or not isinstance(cache.get(today), dict):
-                        cache[today] = {}
-                    if commodity_key not in cache[today] or not isinstance(cache[today].get(commodity_key), dict):
-                        cache[today][commodity_key] = {}
-                    cache[today][commodity_key][norm] = price_entry
-                except Exception:
-                    pass
-
-    # Persist cache
-    try:
-        _save_cache(cache)
-    except Exception:
-        pass
+        results.append({
+            "city": name,
+            "state": m.get("state"),
+            "modal_price": modal,
+            "distance_km": round(distance, 2),
+            "effective_price": round(effective_price, 2),
+            "lat": float(lat),
+            "lon": float(lon),
+            "raw": best_price,
+        })
 
     # Sort by distance then by effective price desc
     results = sorted(results, key=lambda x: (x.get("distance_km", 999999), -float(x.get("effective_price", 0))))
