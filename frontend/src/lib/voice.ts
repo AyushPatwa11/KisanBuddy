@@ -127,28 +127,62 @@ export async function translateText(
   }
 }
 
+export function getLocaleForLanguage(lang: string): string {
+  const code = (lang || 'en').toLowerCase().split('-')[0];
+  const map: Record<string, string> = {
+    hi: 'hi-IN',
+    or: 'or-IN',
+    bn: 'bn-IN',
+    mr: 'mr-IN',
+    te: 'te-IN',
+    ta: 'ta-IN',
+    gu: 'gu-IN',
+    kn: 'kn-IN',
+    pa: 'pa-IN',
+    ml: 'ml-IN',
+    en: 'en-IN',
+    hindi: 'hi-IN',
+    odia: 'or-IN',
+    bengali: 'bn-IN',
+    marathi: 'mr-IN',
+    telugu: 'te-IN',
+    tamil: 'ta-IN',
+    gujarati: 'gu-IN',
+    kannada: 'kn-IN',
+    punjabi: 'pa-IN',
+    malayalam: 'ml-IN',
+    english: 'en-IN',
+  };
+  return map[code] || 'en-IN';
+}
+
 /**
  * Text-to-Speech with regional language support
  */
-export function speak(text: string, lang: LanguageKey = 'hindi'): void {
-  if (!('speechSynthesis' in window)) {
-    console.warn('Speech synthesis not supported');
+export function speak(text: string, lang: string = 'en'): void {
+  if (!('speechSynthesis' in window) || !text) {
+    console.warn('Speech synthesis not supported or empty text');
     return;
   }
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = SUPPORTED_LANGUAGES[lang].code;
-  utterance.rate = 0.9; // Slightly slower for clarity
+  try {
+    speechSynthesis.cancel(); // Stop any ongoing speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    const locale = getLocaleForLanguage(lang);
+    utterance.lang = locale;
+    utterance.rate = 0.95; // Slightly slower for clear regional pronunciation
 
-  // Try to find a voice for the language
-  const voices = speechSynthesis.getVoices();
-  const langCode = SUPPORTED_LANGUAGES[lang].code;
-  const matchingVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-  if (matchingVoice) {
-    utterance.voice = matchingVoice;
+    const voices = speechSynthesis.getVoices();
+    const primaryCode = locale.split('-')[0];
+    const matchingVoice = voices.find(v => v.lang.startsWith(primaryCode) || v.lang.startsWith(locale));
+    if (matchingVoice) {
+      utterance.voice = matchingVoice;
+    }
+
+    speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('Speech synthesis error:', e);
   }
-
-  speechSynthesis.speak(utterance);
 }
 
 /**

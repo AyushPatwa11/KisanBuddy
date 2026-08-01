@@ -111,28 +111,23 @@ Return ONLY valid JSON, no other text."""
 def chat_with_soil_context(
     soil_data: Dict[str, Any],
     user_message: str,
-    chat_history: Optional[List[Dict[str, str]]] = None
+    chat_history: Optional[List[Dict[str, str]]] = None,
+    language: str = "en"
 ) -> Dict[str, Any]:
-    """Chat with AI about crop suitability and farming advice based on soil report data.
-    
-    Args:
-        soil_data: Extracted soil parameters from report
-        user_message: User's question
-        chat_history: List of previous messages [{"role": "user"|"assistant", "content": "..."}]
-    
-    Returns:
-        Dict with 'response' and 'updated_history'
-    """
+    """Chat with AI about crop suitability and farming advice based on soil report data."""
     api_key = get_gemini_api_key()
     if not api_key:
         raise ValueError("GEMINI_API_KEY not configured")
     
     genai.configure(api_key=api_key)
     
-    # Detect language preference from user_message (simple heuristic)
-    import re
-    contains_devanagari = bool(re.search(r'[\u0900-\u097F]', user_message or ''))
-    language_instruction = "Use both English and Hindi crop names when helpful." if contains_devanagari else "Respond in English only."
+    LANG_MAP = {
+        "en": "English", "hi": "Hindi (हिंदी)", "or": "Odia (ଓଡ଼ିଆ)", "bn": "Bengali (বাংলা)",
+        "mr": "Marathi (मराठी)", "te": "Telugu (తెలుగు)", "ta": "Tamil (தமிழ்)", "gu": "Gujarati (ગુજરાતી)",
+        "kn": "Kannada (ಕನ್ನಡ)", "pa": "Punjabi (ਪੰਜਾਬੀ)", "ml": "Malayalam (മലയാളം)"
+    }
+    lang_name = LANG_MAP.get(language, "English")
+    language_instruction = f"CRITICAL MULTILINGUAL REQUIREMENT: Write the entire advice, crop names, and fertilizer recommendations in {lang_name} script."
 
     # Build system context from soil data
     params = soil_data.get('parameters', {})

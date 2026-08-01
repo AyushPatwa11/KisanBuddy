@@ -255,7 +255,7 @@ def _call_groq_with_prompt(image_base64: Optional[str] = None, image_url: Option
 
     language_name = SUPPORTED_LANGUAGES.get(language, "English")
     if language != "en":
-        prompt = prompt + f"\n\nAlso provide key information in {language_name} for local farmers."
+        prompt = prompt + f"\n\nCRITICAL MULTILINGUAL REQUIREMENT: Write ALL response text, recommendations, symptoms, and advice entirely in {language_name} in native script."
 
     if image_url:
         content_str = prompt + "\n\n[IMAGE_URL]\n" + image_url
@@ -382,12 +382,11 @@ def _call_groq_api(image_base64: Optional[str] = None, image_url: Optional[str] 
     if not api_key:
         raise ValueError("GROQ_API_KEY not configured")
     
-    # Prepare the prompt with language context
     language_name = SUPPORTED_LANGUAGES.get(language, "English")
     # Use Groq-specific prompt constant
     prompt = GROQ_PROMPT
     if language != "en":
-        prompt += f"\n\nAlso provide key information in {language_name} for better understanding by local farmers."
+        prompt += f"\n\nCRITICAL MULTILINGUAL REQUIREMENT: Output ALL diagnosis explanations, symptoms, treatment steps, organic remedies, and prevention advice in {language_name} in native script."
     
     # Prepare request payload for Groq (OpenAI-compatible format)
     # Groq expects `messages[].content` to be a string. Provide the prompt followed by

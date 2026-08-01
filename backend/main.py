@@ -521,7 +521,8 @@ def soil_chat(req: SoilChatRequest):
         result = chat_with_soil_context(
             soil_data=req.soil_data,
             user_message=req.message,
-            chat_history=req.chat_history
+            chat_history=req.chat_history,
+            language=getattr(req, 'language', None) or getattr(req, 'lang', 'en')
         )
         return result
     except Exception as e:
@@ -2059,7 +2060,7 @@ def chat(req: ChatRequest):
         suggestions = []
         intent = None
         
-        # Very small rule-based assistant for quick guidance
+        reply = "I am Kisan Buddy agricultural assistant. Ask me anything about your crop health, mandi prices, or weather risks!"
         if any(k in text for k in ["leaf", "pest", "disease", "crop", "plant"]):
             reply = (
                 "Please tell me the crop name and symptoms (spots, yellowing, holes). "
@@ -2076,12 +2077,29 @@ def chat(req: ChatRequest):
             reply = "I can provide a 14-day hazard forecast for your location. Allow location access or tell me your town/village."
             intent = "weather_hazards"
             suggestions = ["Check rain forecast", "Flood risk assessment", "Best spraying time"]
-        else:
-            reply = "I can help with crop health diagnosis, market prices, and weather hazards. Try: 'My tomato leaves have spots' or 'Show wheat prices'."
-            suggestions = ["Diagnose crop disease", "Check market prices", "Weather forecast"]
+        lang = (req.language or "en").lower()
+
+        # If Groq is available, generate dynamic multi-language AI response
+        from services.vision import get_groq_api_key, _call_groq_with_prompt
+        if get_groq_api_key():
+            try:
+                groq_resp = _call_groq_with_prompt(
+                    prompt="You are Kisan Buddy, an expert Indian agricultural AI assistant. Answer the farmer's query concisely, practically, and empathetically.",
+                    extra_message=req.message,
+                    language=lang
+                )
+                choices = groq_resp.get("choices") or []
+                res_content = choices[0].get("message", {}).get("content") if choices else None
+                if res_content and isinstance(res_content, str) and len(res_content.strip()) > 0:
+                    reply = res_content.strip()
+                    return ChatResponse(reply=reply, suggestions=suggestions, intent_detected=intent)
+            except Exception as ge:
+                pass
 
         return ChatResponse(reply=reply, suggestions=suggestions, intent_detected=intent)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 

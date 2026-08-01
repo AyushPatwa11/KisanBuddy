@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import TRANSLATIONS from '@/i18n/translations_fixed';
 
-type Lang = keyof typeof TRANSLATIONS;
+export type Lang = keyof typeof TRANSLATIONS;
 
-// Friendly display names (native or English fallback) for the languages we support
+// Friendly display names with native scripts for Indian regional languages
 export const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
   hi: 'हिन्दी',
+  or: 'ଓଡ଼ିଆ',
   bn: 'বাংলা',
   mr: 'मराठी',
   te: 'తెలుగు',
@@ -31,7 +32,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('kb_lang') as Lang | null;
+      const stored = (localStorage.getItem('kb_lang') || localStorage.getItem('km_lang')) as Lang | null;
       if (stored && TRANSLATIONS[stored]) setLangState(stored);
     } catch (e) {
       // ignore
@@ -40,11 +41,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    try { localStorage.setItem('kb_lang', l); } catch (e) {}
+    try {
+      localStorage.setItem('kb_lang', l);
+      localStorage.setItem('km_lang', l);
+    } catch (e) {}
   };
 
   const t = (key: string) => {
-    return TRANSLATIONS[lang]?.[key] ?? key;
+    return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS['en']?.[key] ?? key;
   };
 
   return (

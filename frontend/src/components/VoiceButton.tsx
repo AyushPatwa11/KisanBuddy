@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import mergeClasses from '../lib/mergeClasses';
+import { useI18n } from '@/lib/i18n';
+import { getLocaleForLanguage } from '@/lib/voice';
 
 interface VoiceButtonProps {
   onResult: (transcript: string) => void;
@@ -12,10 +14,12 @@ interface VoiceButtonProps {
 export function VoiceButton({ 
   onResult, 
   onListeningChange,
-  lang = 'hi-IN',
+  lang: propLang,
   size = 'md',
   variant = 'default',
 }: VoiceButtonProps) {
+  const { lang: i18nLang } = useI18n();
+  const lang = getLocaleForLanguage(propLang || i18nLang);
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
