@@ -96,7 +96,8 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background: linear-gradient(165deg, var(--color-primary-50) 0%, var(--color-neutral-0) 50%, var(--color-secondary-50) 100%);
+  background:
+    radial-gradient(circle at top, rgba(220, 252, 231, 0.72), rgba(255, 255, 255, 0.94) 28%, rgba(236, 253, 245, 0.92) 58%, rgba(226, 246, 213, 0.98) 100%);
   background-attachment: fixed;
   color: var(--color-neutral-800);
   min-height: 100vh;
@@ -150,6 +151,33 @@ body {
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
+}
+
+@keyframes farm-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(18px, -14px, 0) scale(1.05); }
+}
+
+@keyframes farm-drift-reverse {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-18px, 12px, 0) scale(1.05); }
+}
+
+@keyframes field-sweep {
+  0% { transform: translateX(-8%); opacity: 0.35; }
+  50% { opacity: 0.6; }
+  100% { transform: translateX(8%); opacity: 0.35; }
+}
+
+@keyframes farm-cloud {
+  0% { transform: translateX(-20px); opacity: 0.28; }
+  50% { opacity: 0.42; }
+  100% { transform: translateX(24px); opacity: 0.28; }
+}
+
+@keyframes farm-pan {
+  0% { transform: translateX(-4%); }
+  100% { transform: translateX(4%); }
 }
 
 .animate-fade-in { animation: fadeIn var(--transition-base) forwards; }
