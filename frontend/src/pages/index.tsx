@@ -203,7 +203,7 @@ export default function Home() {
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
           <div className="space-y-6">
             <Badge variant="neutral" className="bg-white text-neutral-700" dot>
-              Simple, clean farm intelligence
+              Field-first agriculture dashboard
             </Badge>
 
             <div className="max-w-3xl space-y-4">
@@ -214,7 +214,7 @@ export default function Home() {
                 {t('heroSubhead')}
               </p>
               <p className="max-w-2xl text-base leading-7 text-neutral-600">
-                A straightforward dashboard for crop health, mandi prices, weather alerts, and soil guidance.
+                A straightforward dashboard for crop health, soil care, mandi prices, and weather alerts.
               </p>
             </div>
 
@@ -263,8 +263,8 @@ export default function Home() {
             <div className="p-6 sm:p-7">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Overview</div>
-                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">Field summary</h2>
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Farm overview</div>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">Season summary</h2>
                 </div>
                 <Badge variant="success" dot>
                   Live
@@ -274,19 +274,26 @@ export default function Home() {
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-3xl border border-neutral-100 bg-neutral-50 p-5">
                   <div className="text-sm text-neutral-500">Crop health</div>
-                  <div className="mt-2 text-xl font-semibold text-neutral-950">Stable</div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">Normal leaf pulse and no acute stress detected.</p>
+                  <div className="mt-2 text-xl font-semibold text-neutral-950">Healthy</div>
+                  <p className="mt-2 text-sm leading-6 text-neutral-600">Crop growth looks steady with no immediate stress.</p>
                 </div>
                 <div className="rounded-3xl border border-neutral-100 bg-neutral-50 p-5">
                   <div className="text-sm text-neutral-500">Next step</div>
-                  <div className="mt-2 text-xl font-semibold text-neutral-950">Check spray window</div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">Weather looks clear for the next short treatment window.</p>
+                  <div className="mt-2 text-xl font-semibold text-neutral-950">Plan field work</div>
+                  <p className="mt-2 text-sm leading-6 text-neutral-600">Weather is suitable for light farm work and inspection.</p>
                 </div>
                 <div className="rounded-3xl border border-neutral-100 bg-neutral-50 p-5 sm:col-span-2">
-                  <div className="text-sm text-neutral-500">Market pulse</div>
+                  <div className="text-sm text-neutral-500">Harvest market</div>
                   <div className="mt-2 text-xl font-semibold text-neutral-950">Good nearby pricing</div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">The nearest mandi shows a steady upward price trend.</p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-600">The nearest mandi shows a steady price trend for fresh produce.</p>
                 </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                <Badge variant="success" dot>Crop care</Badge>
+                <Badge variant="warning" dot>Soil health</Badge>
+                <Badge variant="primary" dot>Weather watch</Badge>
+                <Badge variant="neutral" dot>Harvest planning</Badge>
               </div>
             </div>
           </Card>
@@ -309,8 +316,8 @@ export default function Home() {
         <section className="mb-14">
           <SectionHeading
             eyebrow="Core tools"
-            title="Clean access to the main farm workflows."
-            description="The layout is now simpler: fewer decorative layers, clearer cards, and direct actions for the work farmers actually need to do."
+            title="Clear access to the main farm workflows."
+            description="The layout stays simple, but the content is tuned for crop care, field decisions, and harvest planning."
           />
 
           <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -343,8 +350,8 @@ export default function Home() {
         <section className="mb-14">
           <SectionHeading
             eyebrow="Why it helps"
-            title="Less noise. More useful information."
-            description="The page now feels like a reliable tool instead of a visual demo, with more whitespace and more readable hierarchy."
+            title="Less noise. More useful farm information."
+            description="The page now feels like a dependable farming tool, with more whitespace and clearer hierarchy."
           />
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
@@ -369,7 +376,7 @@ export default function Home() {
                 <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">How it helps</div>
                 <h2 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">Simple, practical support for daily farm decisions.</h2>
                 <p className="mt-4 text-sm leading-7 text-neutral-600">
-                  Use crop diagnostics, price checks, weather alerts, and soil guidance from one calm interface built for quick reading.
+                  Use crop diagnostics, price checks, weather alerts, and soil guidance from one calm interface built for quick reading in the field.
                 </p>
               </div>
 
