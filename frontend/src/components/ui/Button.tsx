@@ -29,7 +29,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const baseStyles = `
       inline-flex items-center justify-center gap-2 
-      font-semibold rounded-2xl
+      font-semibold rounded-xl
       transition-all duration-200 ease-out
       focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
@@ -39,14 +39,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variants: Record<string, string> = {
       primary: `
         text-white
-        bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600
-        hover:from-emerald-400 hover:via-emerald-500 hover:to-teal-500 hover:shadow-[0_18px_36px_rgba(16,185,129,0.28)] hover:-translate-y-0.5
-        focus-visible:ring-emerald-500
-        shadow-[0_14px_28px_rgba(16,185,129,0.2)]
+        bg-gradient-to-br from-primary-600 to-primary-700
+        hover:from-primary-500 hover:to-primary-600 hover:shadow-lg hover:-translate-y-0.5
+        focus-visible:ring-primary-500
+        shadow-md
       `,
       secondary: `
         text-neutral-800 bg-white border border-neutral-200
-        hover:bg-neutral-50 hover:border-emerald-200 hover:shadow-[0_18px_32px_rgba(16,24,40,0.12)] hover:-translate-y-0.5
+        hover:bg-neutral-50 hover:border-neutral-300 hover:shadow-md hover:-translate-y-0.5
         focus-visible:ring-neutral-400
         shadow-sm
       `,
@@ -58,14 +58,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       danger: `
         text-white
         bg-gradient-to-br from-red-500 to-red-600
-        hover:from-red-400 hover:to-red-500 hover:shadow-[0_18px_36px_rgba(239,68,68,0.28)] hover:-translate-y-0.5
+        hover:from-red-400 hover:to-red-500 hover:shadow-lg hover:-translate-y-0.5
         focus-visible:ring-red-500
         shadow-md
       `,
       success: `
         text-white
         bg-gradient-to-br from-emerald-500 to-emerald-600
-        hover:from-emerald-400 hover:to-emerald-500 hover:shadow-[0_18px_36px_rgba(16,185,129,0.28)] hover:-translate-y-0.5
+        hover:from-emerald-400 hover:to-emerald-500 hover:shadow-lg hover:-translate-y-0.5
         focus-visible:ring-emerald-500
         shadow-md
       `,

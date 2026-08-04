@@ -20,22 +20,22 @@ export function Badge({
   children,
 }: BadgeProps) {
   const variants = {
-    primary: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
-    secondary: 'bg-amber-50 text-amber-800 border-amber-200/80',
-    success: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
-    warning: 'bg-amber-50 text-amber-800 border-amber-200/80',
-    error: 'bg-red-50 text-red-800 border-red-200/80',
-    info: 'bg-sky-50 text-sky-800 border-sky-200/80',
-    neutral: 'bg-neutral-50 text-neutral-700 border-neutral-200/80',
+    primary: 'bg-primary-100 text-primary-800 border-primary-200',
+    secondary: 'bg-secondary-100 text-secondary-800 border-secondary-200',
+    success: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    warning: 'bg-amber-100 text-amber-800 border-amber-200',
+    error: 'bg-red-100 text-red-800 border-red-200',
+    info: 'bg-blue-100 text-blue-800 border-blue-200',
+    neutral: 'bg-neutral-100 text-neutral-700 border-neutral-200',
   };
 
   const dotColors = {
-    primary: 'bg-emerald-500',
-    secondary: 'bg-amber-500',
+    primary: 'bg-primary-500',
+    secondary: 'bg-secondary-500',
     success: 'bg-emerald-500',
     warning: 'bg-amber-500',
     error: 'bg-red-500',
-    info: 'bg-sky-500',
+    info: 'bg-blue-500',
     neutral: 'bg-neutral-500',
   };
 
@@ -48,7 +48,7 @@ export function Badge({
     <span
       className={mergeClasses(
         'inline-flex items-center gap-1.5',
-        'font-semibold rounded-full border px-2.5 py-1 shadow-sm',
+        'font-semibold rounded-full border',
         variants[variant],
         sizes[size],
         className

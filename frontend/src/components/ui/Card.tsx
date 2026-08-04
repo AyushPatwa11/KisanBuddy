@@ -22,25 +22,25 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     const baseStyles = `
-      rounded-[1.75rem]
+      rounded-2xl
       transition-all duration-300 ease-out
     `;
 
     const variants = {
       default: `
-        bg-white border border-white/70
-        shadow-[0_16px_40px_rgba(16,24,40,0.08)]
+        bg-white border border-neutral-100
+        shadow-[0_4px_8px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)]
       `,
       elevated: `
-        bg-white border border-white/70
-        shadow-[0_20px_50px_rgba(16,24,40,0.12)]
+        bg-white border border-neutral-100
+        shadow-[0_8px_24px_rgba(0,0,0,0.12),0_4px_8px_rgba(0,0,0,0.06)]
       `,
       outlined: `
-        bg-white border border-neutral-200/90
+        bg-white border-2 border-neutral-200
       `,
       glass: `
         bg-white/80 backdrop-blur-xl border border-white/50
-        shadow-[0_18px_40px_rgba(16,24,40,0.10)]
+        shadow-[0_4px_8px_rgba(0,0,0,0.08)]
       `,
     };
 
@@ -52,11 +52,11 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     };
 
     const hoverStyles = hover
-      ? `cursor-pointer hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(16,24,40,0.16)] hover:border-emerald-200/80`
+      ? `cursor-pointer hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.14)] hover:border-primary-200`
       : '';
 
     const selectedStyles = selected
-      ? `border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]`
+      ? `border-primary-500 shadow-[0_4px_8px_rgba(0,0,0,0.08),0_0_0_3px_rgba(76,175,80,0.15)]`
       : '';
 
     return (

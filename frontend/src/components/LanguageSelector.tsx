@@ -5,12 +5,12 @@ export default function LanguageSelector({ className = '' }: { className?: strin
   const { lang, setLang, available, t } = useI18n();
 
   return (
-    <div className={`flex items-center gap-2 text-white ${className}`}>
-      <span className="hidden text-xs font-medium opacity-85 sm:inline">🌐 {t('languageLabel') || 'Language'}:</span>
+    <div className={`flex items-center gap-2 ${className}`}>
+      <span className="text-xs font-medium opacity-90 hidden sm:inline">🌐 {t('languageLabel') || 'Language'}:</span>
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value as any)}
-        className="cursor-pointer rounded-full border border-white/20 bg-white/95 px-3 py-2 text-xs font-semibold text-emerald-950 shadow-[0_12px_24px_rgba(9,33,18,0.16)] outline-none transition hover:border-white/40 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-200/60 sm:text-sm"
+        className="px-2.5 py-1.5 rounded-lg border border-neutral-200 bg-white text-neutral-800 font-medium text-xs sm:text-sm shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none cursor-pointer"
         aria-label="Select language"
       >
         {available.map((code) => (
