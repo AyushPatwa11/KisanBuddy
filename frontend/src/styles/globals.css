@@ -96,8 +96,7 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top, rgba(220, 252, 231, 0.72), rgba(255, 255, 255, 0.94) 28%, rgba(236, 253, 245, 0.92) 58%, rgba(226, 246, 213, 0.98) 100%);
+  background: linear-gradient(180deg, #f8faf8 0%, #ffffff 42%, #f4f7f4 100%);
   background-attachment: fixed;
   color: var(--color-neutral-800);
   min-height: 100vh;
